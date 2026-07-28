@@ -1,0 +1,16 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ban, Check, Lightbulb, RefreshCw, Sparkles, X } from "lucide-react";
+import { Badge, Button, Card, EmptyState, Notice } from "../components/ui";
+import { listSuggestions, refreshSuggestions, resolveSuggestion } from "../features/data/api";
+
+export function LearningPage() {
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: ["suggestions"], queryFn: listSuggestions });
+  const refresh = useMutation({ mutationFn: refreshSuggestions, onSuccess: () => client.invalidateQueries({ queryKey: ["suggestions"] }) });
+  const resolve = useMutation({ mutationFn: ({id,resolution}:{id:string;resolution:"accepted"|"rejected"|"ignored"}) => resolveSuggestion(id,resolution), onSuccess: () => client.invalidateQueries({ queryKey: ["suggestions"] }) });
+  return <div className="grid gap-7">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><div className="flex items-center gap-2 text-sm font-bold text-moss-600"><Sparkles size={16} />Dein Workflow lernt mit</div><h2 className="mt-2 font-display text-3xl font-extrabold">Lernvorschläge</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">Nur nachvollziehbare Vorschläge – deine Vorlagen werden niemals automatisch geändert.</p></div><Button variant="secondary" onClick={() => refresh.mutate()} disabled={refresh.isPending}><RefreshCw className={refresh.isPending ? "animate-spin" : ""} size={16} />Signale auswerten</Button></div>
+    <Notice>Vorschläge entstehen ab drei wiederholt ergänzten Aufgaben oder fünf übersprungenen Vorlagenaufgaben desselben Formats.</Notice>
+    {query.isLoading ? <div className="h-52 animate-pulse rounded-2xl bg-white" /> : query.data?.length ? <div className="grid gap-4">{query.data.map(item => <Card key={item.id} className="p-5 sm:p-6"><div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div className="max-w-3xl"><div className="flex flex-wrap items-center gap-2"><Badge tone="amber">{item.formats?.name}</Badge><Badge>{item.occurrence_count} Beobachtungen</Badge></div><h3 className="mt-3 font-display text-lg font-extrabold">{item.title}</h3><p className="mt-2 text-sm leading-6 text-black/50">{item.description}</p><div className="mt-3 h-1.5 max-w-xs overflow-hidden rounded-full bg-black/[0.05]"><div className="h-full bg-amber-400" style={{width:`${Number(item.confidence_score)*100}%`}} /></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => resolve.mutate({id:item.id,resolution:"accepted"})}><Check size={15} />Annehmen</Button><Button size="sm" variant="secondary" onClick={() => resolve.mutate({id:item.id,resolution:"rejected"})}><X size={15} />Ablehnen</Button><Button size="sm" variant="ghost" onClick={() => resolve.mutate({id:item.id,resolution:"ignored"})}><Ban size={15} />Dauerhaft ignorieren</Button></div></div></Card>)}</div> : <EmptyState icon={Lightbulb} title="Noch keine Vorschläge" description="Arbeite einige Produktionen ab und ergänze individuelle Aufgaben. Das System erkennt wiederkehrende Muster nachvollziehbar." action={<Button variant="secondary" onClick={() => refresh.mutate()}>Jetzt auswerten</Button>} />}
+  </div>;
+}
