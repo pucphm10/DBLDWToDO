@@ -2,11 +2,11 @@ import {
   BookTemplate, CalendarCheck, ChevronRight, LayoutDashboard, Lightbulb,
   LogOut, Menu, Plus, Settings, X
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
-import { Button } from "../components/ui";
+import { Button, LoadingScreen, Notice } from "../components/ui";
 import { cn } from "../lib/utils";
 import { seedWorkspace } from "../features/data/api";
 
@@ -31,9 +31,24 @@ export function AppLayout() {
   const location = useLocation();
   const current = links.find((link) => link.to === "/" ? location.pathname === "/" : location.pathname.startsWith(link.to));
 
-  useEffect(() => {
-    if (user) void seedWorkspace().catch(() => undefined);
-  }, [user]);
+  const workspace = useQuery({
+    queryKey: ["workspace-seed", user?.id],
+    queryFn: seedWorkspace,
+    enabled: Boolean(user),
+    staleTime: Infinity
+  });
+
+  if (workspace.isPending) return <LoadingScreen />;
+  if (workspace.isError) {
+    return <div className="grid min-h-screen place-items-center bg-paper px-5">
+      <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-soft">
+        <h1 className="font-display text-2xl font-extrabold">Arbeitsbereich konnte nicht eingerichtet werden</h1>
+        <p className="mt-2 text-sm leading-6 text-black/50">Die Standardvorlagen wurden noch nicht vollständig geladen.</p>
+        <div className="mt-5"><Notice tone="error">Bitte versuche die Einrichtung erneut. Deine vorhandenen Daten bleiben erhalten.</Notice></div>
+        <Button className="mt-5 w-full" onClick={() => void workspace.refetch()}>Erneut versuchen</Button>
+      </div>
+    </div>;
+  }
 
   return (
     <div className="min-h-screen bg-paper">
