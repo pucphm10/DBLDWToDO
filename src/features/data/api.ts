@@ -157,6 +157,26 @@ export async function addProductionTask(input: {
   return unwrap(result as any);
 }
 
+export async function updateProductionTask(id: string, values: Record<string, unknown>) {
+  const result = await supabase.from("production_tasks").update(values).eq("id", id).select().single();
+  return unwrap(result as any);
+}
+
+export async function deleteProductionTask(id: string) {
+  const result = await supabase.from("production_tasks").delete().eq("id", id);
+  if (result.error) throw new Error(result.error.message);
+}
+
+export async function updateProductionSubtask(id: string, values: Record<string, unknown>) {
+  const result = await supabase.from("production_subtasks").update(values).eq("id", id).select().single();
+  return unwrap(result as any);
+}
+
+export async function deleteProductionSubtask(id: string) {
+  const result = await supabase.from("production_subtasks").delete().eq("id", id);
+  if (result.error) throw new Error(result.error.message);
+}
+
 export async function updateProduction(id: string, values: Record<string, unknown>) {
   const result = await supabase.from("productions").update(values).eq("id", id).select().single();
   return unwrap(result as any);
@@ -196,6 +216,29 @@ export async function updateTemplateTask(id: string, values: Record<string, unkn
 
 export async function deleteTemplateTask(id: string) {
   const result = await supabase.from("template_tasks").delete().eq("id", id);
+  if (result.error) throw new Error(result.error.message);
+}
+
+export async function addTemplateSubtask(taskId: string, title: string) {
+  const positionResult = await supabase.from("template_subtasks")
+    .select("position").eq("template_task_id", taskId)
+    .order("position", { ascending: false }).limit(1);
+  if (positionResult.error) throw new Error(positionResult.error.message);
+  const result = await supabase.from("template_subtasks").insert({
+    template_task_id: taskId,
+    title,
+    position: (positionResult.data?.[0]?.position ?? -1) + 1
+  }).select().single();
+  return unwrap(result as any);
+}
+
+export async function updateTemplateSubtask(id: string, values: Record<string, unknown>) {
+  const result = await supabase.from("template_subtasks").update(values).eq("id", id).select().single();
+  return unwrap(result as any);
+}
+
+export async function deleteTemplateSubtask(id: string) {
+  const result = await supabase.from("template_subtasks").delete().eq("id", id);
   if (result.error) throw new Error(result.error.message);
 }
 
