@@ -47,7 +47,7 @@ export async function getProduction(id: string): Promise<Production> {
 export async function listTemplates(): Promise<Template[]> {
   const result = await supabase
     .from("templates")
-    .select("*, formats(name,slug), template_versions(version_number)")
+    .select("*, formats(name,slug), template_versions!template_versions_template_id_fkey(version_number)")
     .eq("is_active", true)
     .order("name");
   const rows = unwrap(result as any) as Template[];
@@ -60,7 +60,7 @@ export async function listTemplates(): Promise<Template[]> {
 export async function getTemplate(id: string): Promise<any> {
   const templateResult = await supabase
     .from("templates")
-    .select("*, formats(name,slug), template_versions(*)")
+    .select("*, formats(name,slug), template_versions!template_versions_template_id_fkey(*)")
     .eq("id", id)
     .single();
   const template = unwrap<Record<string, any>>(templateResult as any);
