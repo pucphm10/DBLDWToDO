@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getTemplate, listTemplates } from "./api";
+import { deleteProduction, getTemplate, listTemplates } from "./api";
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn()
@@ -50,5 +50,17 @@ describe("template queries", () => {
     expect(templateSelect).toHaveBeenCalledWith(
       "*, formats(name,slug), template_versions!template_versions_template_id_fkey(*)"
     );
+  });
+
+  it("deletes only the selected production", async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const remove = vi.fn().mockReturnValue({ eq });
+    mocks.from.mockReturnValue({ delete: remove });
+
+    await deleteProduction("production-1");
+
+    expect(mocks.from).toHaveBeenCalledWith("productions");
+    expect(remove).toHaveBeenCalledOnce();
+    expect(eq).toHaveBeenCalledWith("id", "production-1");
   });
 });

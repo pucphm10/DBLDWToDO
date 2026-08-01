@@ -5,10 +5,10 @@ import {
   Play, Plus, Search, Scissors, Sparkles, Trash2
 } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, Field, Input, Modal, Notice, Progress } from "../components/ui";
 import {
-  addProductionTask, addSubtask, deleteProductionSubtask, deleteProductionTask,
+  addProductionTask, addSubtask, deleteProduction, deleteProductionSubtask, deleteProductionTask,
   getProduction, toggleQualityCheck, updateProduction, updateProductionSubtask,
   updateProductionTask, updateSubtaskStatus, updateTaskStatus
 } from "../features/data/api";
@@ -55,6 +55,7 @@ function TaskStatusIcon({ status }: { status: TaskStatus }) {
 
 export function ProductionDetailPage() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const client = useQueryClient();
   const query = useQuery({
     queryKey: ["production", id],
@@ -68,6 +69,7 @@ export function ProductionDetailPage() {
   const [targetTask, setTargetTask] = useState<string | null>(null);
   const [newTaskSection, setNewTaskSection] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [entryTitle, setEntryTitle] = useState("");
   const [timecode, setTimecode] = useState("");
   const [error, setError] = useState("");
@@ -83,6 +85,13 @@ export function ProductionDetailPage() {
   const checkMutation = useMutation({
     mutationFn: ({ checkId, value }: { checkId: string; value: boolean }) => toggleQualityCheck(checkId, value),
     onSuccess: invalidate
+  });
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProduction(id),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["productions"] });
+      navigate("/productions", { replace: true });
+    }
   });
   const production = query.data;
   const progress = production ? calculateProgress(production) : null;
@@ -170,14 +179,19 @@ export function ProductionDetailPage() {
           <span className="flex items-center gap-2">Release {formatDate(production.planned_publish_date)}</span>
         </div>
       </div>
-      <select
-        aria-label="Produktionsstatus"
-        value={production.status}
-        onChange={(event) => void updateProduction(id, { status: event.target.value }).then(invalidate)}
-        className="min-h-11 w-full rounded-xl border border-black/10 bg-white px-3.5 text-sm font-semibold sm:w-auto"
-      >
-        {productionStatuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </select>
+      <div className="grid gap-2 sm:flex xl:grid">
+        <select
+          aria-label="Produktionsstatus"
+          value={production.status}
+          onChange={(event) => void updateProduction(id, { status: event.target.value }).then(invalidate)}
+          className="min-h-11 w-full rounded-xl border border-black/10 bg-white px-3.5 text-sm font-semibold sm:w-auto"
+        >
+          {productionStatuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setDeleteOpen(true)}>
+          <Trash2 size={16} />Produktion löschen
+        </Button>
+      </div>
     </section>
 
     <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -547,6 +561,28 @@ export function ProductionDetailPage() {
         <Notice>Die Änderung gilt für diese Produktion und wird in der Lernhistorie erfasst.</Notice>
         <Button type="submit" disabled={!entryTitle.trim()}>Änderung speichern</Button>
       </form>
+    </Modal>}
+
+    {deleteOpen && <Modal title="Produktion löschen" onClose={() => {
+      if (!deleteMutation.isPending) setDeleteOpen(false);
+    }}>
+      <div className="grid gap-4">
+        <Notice tone="error">
+          Diese Produktion wird endgültig gelöscht – zusammen mit allen Aufgaben, Unterpunkten und Notizen.
+        </Notice>
+        <p className="text-sm text-black/60">
+          Möchtest du <strong className="text-ink">{production.working_title || "diese Produktion"}</strong> wirklich löschen?
+        </p>
+        {deleteMutation.error && <Notice tone="error">{humanizeError(deleteMutation.error)}</Notice>}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button variant="secondary" disabled={deleteMutation.isPending} onClick={() => setDeleteOpen(false)}>
+            Abbrechen
+          </Button>
+          <Button variant="danger" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>
+            <Trash2 size={16} />{deleteMutation.isPending ? "Wird gelöscht …" : "Endgültig löschen"}
+          </Button>
+        </div>
+      </div>
     </Modal>}
   </div>;
 }

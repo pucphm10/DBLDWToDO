@@ -182,6 +182,11 @@ export async function updateProduction(id: string, values: Record<string, unknow
   return unwrap(result as any);
 }
 
+export async function deleteProduction(id: string) {
+  const result = await supabase.from("productions").delete().eq("id", id);
+  if (result.error) throw new Error(result.error.message);
+}
+
 export async function setSectionCollapsed(id: string, value: boolean) {
   const result = await supabase.from("production_sections")
     .update({ is_collapsed: value }).eq("id", id).select().single();
